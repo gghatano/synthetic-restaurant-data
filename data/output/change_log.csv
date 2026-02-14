@@ -1,0 +1,34 @@
+change_id,entity_type,entity_id,change_type,changed_at,effective_from,effective_to,summary
+CH00000001,menu_item,M001,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Hamburg Steak
+CH00000002,menu_item,M002,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Chicken Plate
+CH00000003,menu_item,M003,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Pasta
+CH00000004,menu_item,M004,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Curry Rice
+CH00000005,menu_item,M005,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Kids Curry
+CH00000006,menu_item,M006,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Kids Pasta
+CH00000007,menu_item,M101,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Spring Salad
+CH00000008,menu_item,M102,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Summer Lemon Pasta
+CH00000009,menu_item,M103,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Autumn Mushroom Stew
+CH00000010,menu_item,M104,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Winter Cream Stew
+CH00000011,menu_item,M201,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Halloween Pumpkin Pie
+CH00000012,menu_item,M202,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Christmas Roast Plate
+CH00000013,menu_item,M203,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded menu item Setsubun Ehou Roll
+CH00000014,menu_price_history,MPH00000001,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 680 for M001
+CH00000015,menu_price_history,MPH00000002,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 780 for M002
+CH00000016,menu_price_history,MPH00000003,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 520 for M003
+CH00000017,menu_price_history,MPH00000004,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 980 for M004
+CH00000018,menu_price_history,MPH00000005,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 390 for M005
+CH00000019,menu_price_history,MPH00000006,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 450 for M006
+CH00000020,menu_price_history,MPH00000007,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 620 for M101
+CH00000021,menu_price_history,MPH00000008,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 720 for M102
+CH00000022,menu_price_history,MPH00000009,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 760 for M103
+CH00000023,menu_price_history,MPH00000010,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 800 for M104
+CH00000024,menu_price_history,MPH00000011,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 580 for M201
+CH00000025,menu_price_history,MPH00000012,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 980 for M202
+CH00000026,menu_price_history,MPH00000013,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded price 520 for M203
+CH00000027,set_discount,D001,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded discount Always 5% Off
+CH00000028,set_discount,D002,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded discount Always 100 Yen Off
+CH00000029,tax_rate_history,TH00000001,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded tax rate 0.12
+CH00000030,tax_rate_history,TH00000002,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded tax rate 0.08
+CH00000031,tax_rate_history,TH00000003,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded tax rate 0.08
+CH00000032,tax_rate_history,TH00000004,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded tax rate 0.12
+CH00000033,tax_rate_history,TH00000005,create,2019-12-31T23:30:00+09:00,2020-01-01T07:00:00+09:00,,seeded tax rate 0.10

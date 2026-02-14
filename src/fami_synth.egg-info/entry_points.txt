@@ -1,0 +1,2 @@
+[console_scripts]
+fami-synth = fami_synth.cli:main

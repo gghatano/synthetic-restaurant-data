@@ -1,0 +1,14 @@
+menu_item_id,name,category,is_kids_item,season,event
+M001,Hamburg Steak,main,0,,
+M002,Chicken Plate,main,0,,
+M003,Pasta,main,0,,
+M004,Curry Rice,main,0,,
+M005,Kids Curry,kids,1,,
+M006,Kids Pasta,kids,1,,
+M101,Spring Salad,seasonal,0,spring,
+M102,Summer Lemon Pasta,seasonal,0,summer,
+M103,Autumn Mushroom Stew,seasonal,0,autumn,
+M104,Winter Cream Stew,seasonal,0,winter,
+M201,Halloween Pumpkin Pie,event,0,,halloween
+M202,Christmas Roast Plate,event,0,,christmas
+M203,Setsubun Ehou Roll,event,0,,setsubun
