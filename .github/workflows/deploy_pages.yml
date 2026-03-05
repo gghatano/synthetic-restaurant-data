@@ -1,0 +1,54 @@
+# Copy this file to: .github/workflows/deploy_pages.yml
+#
+# This workflow builds the static dashboard and deploys it to GitHub Pages.
+# It can be triggered manually or called by daily_generate.yml after new data is pushed.
+
+name: Deploy Dashboard to Pages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'data/output/**'
+      - 'scripts/build_dashboard.py'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build static dashboard
+        run: |
+          mkdir -p docs
+          python scripts/build_dashboard.py --data-dir data/output --out docs/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
