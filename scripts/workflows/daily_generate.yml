@@ -1,0 +1,69 @@
+# Copy this file to: .github/workflows/daily_generate.yml
+#
+# This workflow runs daily at JST 00:00, generates new daily data,
+# and then triggers the deploy_pages workflow.
+
+name: Daily Data Generate
+
+on:
+  schedule:
+    - cron: '0 15 * * *'  # UTC 15:00 = JST 00:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Compute today's JST date
+        id: date
+        run: |
+          TODAY=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          TOMORROW=$(TZ=Asia/Tokyo date -d "+1 day" +%Y-%m-%d)
+          echo "today=$TODAY" >> $GITHUB_OUTPUT
+          echo "tomorrow=$TOMORROW" >> $GITHUB_OUTPUT
+
+      - name: Generate today's data
+        run: |
+          uv run fami-synth generate \
+            --start ${{ steps.date.outputs.today }} \
+            --end ${{ steps.date.outputs.tomorrow }} \
+            --seed 42 \
+            --out-dir data/output
+
+      - name: Commit new data if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/output/
+          if git diff --cached --quiet; then
+            echo "No new data to commit."
+          else
+            git commit -m "chore: add daily data for ${{ steps.date.outputs.today }}"
+            git push origin ${{ github.ref_name }}
+          fi
+
+      - name: Trigger dashboard deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy_pages.yml',
+              ref: '${{ github.ref_name }}',
+            });
