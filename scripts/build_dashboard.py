@@ -529,6 +529,124 @@ def aggregate(data_dir: Path) -> dict:
             "avg_ticket": round(rev / v_cnt) if v_cnt else 0,
         })
 
+    # -------------------------------------------------------------------------
+    # 18. Weekly comparison: recent week vs prev-month avg vs same week last year
+    # -------------------------------------------------------------------------
+    weekly_comparison: list[dict] = []
+    if latest_date:
+        try:
+            latest_dt = datetime.strptime(latest_date, "%Y-%m-%d")
+            # Monday of the week that contains latest_date
+            week_start = latest_dt - timedelta(days=latest_dt.weekday())
+            weekday_labels_ja = ["月", "火", "水", "木", "金", "土", "日"]
+
+            for dow in range(7):  # 0=Mon … 6=Sun
+                target_dt = week_start + timedelta(days=dow)
+                target_str = target_dt.strftime("%Y-%m-%d")
+
+                # Last year: same weekday, 52 weeks back
+                ly_dt = target_dt - timedelta(weeks=52)
+                ly_str = ly_dt.strftime("%Y-%m-%d")
+
+                r_visits = daily_visits.get(target_str, 0)
+                r_revenue = daily_revenue.get(target_str, 0)
+                r_avg = round(r_revenue / r_visits) if r_visits else 0
+
+                ly_visits_val = daily_visits.get(ly_str, 0)
+                ly_revenue_val = daily_revenue.get(ly_str, 0)
+                ly_avg = round(ly_revenue_val / ly_visits_val) if ly_visits_val else 0
+
+                # Prev-month avg: same weekday, 4–8 weeks back
+                pm_v_list: list[int] = []
+                pm_r_list: list[int] = []
+                for weeks_back in range(4, 9):
+                    d_str = (target_dt - timedelta(weeks=weeks_back)).strftime("%Y-%m-%d")
+                    if d_str in daily_visits or d_str in daily_revenue:
+                        pm_v_list.append(daily_visits.get(d_str, 0))
+                        pm_r_list.append(daily_revenue.get(d_str, 0))
+
+                pm_total_v = sum(pm_v_list)
+                pm_total_r = sum(pm_r_list)
+                pm_cnt = len(pm_v_list)
+                pm_avg_visits = round(pm_total_v / pm_cnt) if pm_cnt else 0
+                pm_avg_revenue = round(pm_total_r / pm_cnt) if pm_cnt else 0
+                pm_avg_ticket = round(pm_total_r / pm_total_v) if pm_total_v else 0
+
+                weekly_comparison.append({
+                    "label": weekday_labels_ja[dow],
+                    "date": target_str,
+                    "recent_visits": r_visits,
+                    "recent_revenue": r_revenue,
+                    "recent_avg_ticket": r_avg,
+                    "prev_month_avg_visits": pm_avg_visits,
+                    "prev_month_avg_revenue": pm_avg_revenue,
+                    "prev_month_avg_ticket": pm_avg_ticket,
+                    "last_year_visits": ly_visits_val,
+                    "last_year_revenue": ly_revenue_val,
+                    "last_year_avg_ticket": ly_avg,
+                })
+        except (ValueError, AttributeError):
+            pass
+
+    # -------------------------------------------------------------------------
+    # 19. Store monthly time series
+    # -------------------------------------------------------------------------
+    store_monthly_map: dict[str, dict[str, dict]] = defaultdict(
+        lambda: defaultdict(
+            lambda: {"visits": 0, "revenue": 0, "duration_sum": 0.0,
+                     "duration_cnt": 0, "extra_visits": 0}
+        )
+    )
+
+    for v in visits:
+        d = v["visit_date"]
+        if not d:
+            continue
+        month = d[:7]
+        sid = v["store_id"]
+        store_monthly_map[month][sid]["visits"] += 1
+        dur = _minutes_between(v["seated_at"], v["left_at"])
+        if dur is not None:
+            store_monthly_map[month][sid]["duration_sum"] += dur
+            store_monthly_map[month][sid]["duration_cnt"] += 1
+        if visit_has_extra.get(v["visit_id"]):
+            store_monthly_map[month][sid]["extra_visits"] += 1
+
+    for r in receipts:
+        v = visit_by_id.get(r["visit_id"])
+        if not v:
+            continue
+        d = v["visit_date"]
+        if not d:
+            continue
+        month = d[:7]
+        sid = v["store_id"]
+        store_monthly_map[month][sid]["revenue"] += _int(r["total_yen"])
+
+    all_months = sorted(store_monthly_map.keys())
+    store_monthly_series: list[dict] = []
+    for month in all_months:
+        row: dict = {"month": month}
+        for sid in store_ids:
+            mdata = store_monthly_map[month].get(
+                sid,
+                {"visits": 0, "revenue": 0, "duration_sum": 0.0,
+                 "duration_cnt": 0, "extra_visits": 0},
+            )
+            v_cnt = mdata["visits"]
+            rev = mdata["revenue"]
+            dur_cnt = mdata["duration_cnt"]
+            row[sid + "_visits"] = v_cnt
+            row[sid + "_revenue"] = rev
+            row[sid + "_avg_ticket"] = round(rev / v_cnt) if v_cnt else 0
+            row[sid + "_avg_stay"] = (
+                round(mdata["duration_sum"] / dur_cnt, 1) if dur_cnt else 0
+            )
+            row[sid + "_extra_order_rate"] = (
+                round(mdata["extra_visits"] / v_cnt * 100, 1) if v_cnt else 0
+            )
+        store_monthly_series.append(row)
+
     return {
         "generated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M JST"),
         "latest_date": latest_date,
@@ -554,6 +672,8 @@ def aggregate(data_dir: Path) -> dict:
         "orders_per_visit_data": orders_per_visit_data,
         "items_per_order_data": items_per_order_data,
         "receipt_sample": receipt_sample,
+        "weekly_comparison": weekly_comparison,
+        "store_monthly_series": store_monthly_series,
     }
 
 
@@ -616,9 +736,9 @@ def build_html(agg: dict) -> str:
       <div class="card wide" id="sales_decomposition"></div>
       <div class="card wide" id="weekday_trend"></div>
 
-      <!-- Store comparison -->
-      <div class="card half" id="store_benchmark"></div>
-      <div class="card half" id="store_efficiency"></div>
+      <!-- Store comparison (monthly time series) -->
+      <div class="card wide" id="store_benchmark"></div>
+      <div class="card wide" id="store_efficiency"></div>
 
       <!-- Time slot -->
       <div class="card half" id="time_slot_kpi"></div>
@@ -741,36 +861,40 @@ def build_html(agg: dict) -> str:
         renderKpi("kpi_loyalty", "ロイヤルティ提示率 (最新日)", kpi.loyalty_rate + "%",
           deltaHtml(kpi.loyalty_rate, prev.loyalty_rate, "%", true));
 
-        // --- Daily visits (multi-line by store) ---
-        const storeTraces = DATA.store_ids.map(s => {{
-          if (store !== "ALL" && s !== store) return null;
-          return {{
-            type: "scatter", mode: "lines", name: "店舗 " + s,
-            x: DATA.store_daily_visits.map(r => r.date),
-            y: DATA.store_daily_visits.map(r => r[s] || 0),
-          }};
-        }}).filter(Boolean);
-        Plotly.newPlot("daily_visits", storeTraces, {{ title: "日別来店数（店舗別）", legend: {{ orientation: "h" }} }});
-
-        // --- Daily revenue ---
-        const revSeries = DATA.daily_series;
-        Plotly.newPlot("daily_revenue", [{{
-          type: "bar", name: "売上",
-          x: revSeries.map(r => r.date),
-          y: revSeries.map(r => r.revenue),
-        }}], {{ title: "日別売上", yaxis: {{ title: "売上(円)" }} }});
-
-        // --- Sales decomposition ---
-        Plotly.newPlot("sales_decomposition", [
-          {{ type: "bar", name: "売上", x: revSeries.map(r => r.date), y: revSeries.map(r => r.revenue), yaxis: "y" }},
-          {{ type: "scatter", mode: "lines+markers", name: "客数", x: revSeries.map(r => r.date), y: revSeries.map(r => r.visits), yaxis: "y2" }},
-          {{ type: "scatter", mode: "lines+markers", name: "客単価", x: revSeries.map(r => r.date), y: revSeries.map(r => r.avg_ticket), yaxis: "y3" }},
+        // --- Weekly comparison: visits ---
+        const wc = DATA.weekly_comparison;
+        Plotly.newPlot("daily_visits", [
+          {{ type: "bar", name: "直近週", x: wc.map(r => r.label), y: wc.map(r => r.recent_visits), marker: {{ color: "#1a6bb5" }} }},
+          {{ type: "bar", name: "先月平均（同曜日）", x: wc.map(r => r.label), y: wc.map(r => r.prev_month_avg_visits), marker: {{ color: "#a0b4c2" }} }},
+          {{ type: "bar", name: "昨年同時期", x: wc.map(r => r.label), y: wc.map(r => r.last_year_visits), marker: {{ color: "#e8a020" }} }},
         ], {{
-          title: "売上分解（日別）: 売上 = 客数 × 客単価",
+          title: "曜日別 来店数比較（直近週 / 先月平均 / 昨年同時期）",
+          barmode: "group",
           legend: {{ orientation: "h" }},
-          yaxis: {{ title: "売上(円)" }},
-          yaxis2: {{ title: "客数", overlaying: "y", side: "right" }},
-          yaxis3: {{ title: "客単価(円)", overlaying: "y", side: "right", position: 0.95 }},
+          yaxis: {{ title: "来店数（組）" }},
+        }});
+
+        // --- Weekly comparison: revenue ---
+        Plotly.newPlot("daily_revenue", [
+          {{ type: "bar", name: "直近週", x: wc.map(r => r.label), y: wc.map(r => r.recent_revenue), marker: {{ color: "#1a6bb5" }} }},
+          {{ type: "bar", name: "先月平均（同曜日）", x: wc.map(r => r.label), y: wc.map(r => r.prev_month_avg_revenue), marker: {{ color: "#a0b4c2" }} }},
+          {{ type: "bar", name: "昨年同時期", x: wc.map(r => r.label), y: wc.map(r => r.last_year_revenue), marker: {{ color: "#e8a020" }} }},
+        ], {{
+          title: "曜日別 売上比較（直近週 / 先月平均 / 昨年同時期）",
+          barmode: "group",
+          legend: {{ orientation: "h" }},
+          yaxis: {{ title: "売上（円）" }},
+        }});
+
+        // --- Weekly comparison: avg ticket ---
+        Plotly.newPlot("sales_decomposition", [
+          {{ type: "scatter", mode: "lines+markers", name: "直近週", x: wc.map(r => r.label), y: wc.map(r => r.recent_avg_ticket), marker: {{ color: "#1a6bb5" }}, line: {{ width: 3 }} }},
+          {{ type: "scatter", mode: "lines+markers", name: "先月平均（同曜日）", x: wc.map(r => r.label), y: wc.map(r => r.prev_month_avg_ticket), marker: {{ color: "#a0b4c2" }}, line: {{ dash: "dot" }} }},
+          {{ type: "scatter", mode: "lines+markers", name: "昨年同時期", x: wc.map(r => r.label), y: wc.map(r => r.last_year_avg_ticket), marker: {{ color: "#e8a020" }}, line: {{ dash: "dash" }} }},
+        ], {{
+          title: "曜日別 客単価比較（直近週 / 先月平均 / 昨年同時期）",
+          legend: {{ orientation: "h" }},
+          yaxis: {{ title: "客単価（円）" }},
         }});
 
         // --- Weekday trend ---
@@ -787,27 +911,32 @@ def build_html(agg: dict) -> str:
           yaxis3: {{ title: "客単価(円)", overlaying: "y", side: "right", position: 0.95 }},
         }});
 
-        // --- Store benchmark ---
-        const bench = filterBenchmark(store);
-        const benchColors = bench.map(r => (store !== "ALL" && r.store_id === store) ? "#0f1f2e" : "#6f8592");
-        Plotly.newPlot("store_benchmark", [
-          {{ type: "bar", name: "売上", x: bench.map(r => r.store_id), y: bench.map(r => r.revenue), marker: {{ color: benchColors }}, yaxis: "y" }},
-          {{ type: "scatter", mode: "lines+markers", name: "客単価", x: bench.map(r => r.store_id), y: bench.map(r => r.avg_ticket), yaxis: "y2" }},
-        ], {{
-          title: "店舗別ベンチマーク（売上/客単価）",
-          yaxis: {{ title: "売上(円)" }},
-          yaxis2: {{ title: "客単価(円)", overlaying: "y", side: "right" }},
+        // --- Store monthly time series: revenue ---
+        const ms = DATA.store_monthly_series;
+        const filteredStores = store === "ALL" ? DATA.store_ids : DATA.store_ids.filter(s => s === store);
+        const palette = ["#1a6bb5","#e8a020","#2ca060","#c0392b","#8e44ad","#16a085","#d35400","#2980b9"];
+        Plotly.newPlot("store_benchmark", filteredStores.map((s, i) => ({{
+          type: "scatter", mode: "lines+markers", name: "店舗 " + s,
+          x: ms.map(r => r.month),
+          y: ms.map(r => r[s + "_revenue"] || 0),
+          line: {{ color: palette[i % palette.length] }},
+        }})), {{
+          title: "店舗別 月次売上推移",
           legend: {{ orientation: "h" }},
+          yaxis: {{ title: "売上（円）" }},
+          xaxis: {{ title: "月" }},
         }});
 
-        Plotly.newPlot("store_efficiency", [
-          {{ type: "bar", name: "平均滞在時間(分)", x: bench.map(r => r.store_id), y: bench.map(r => r.avg_stay), marker: {{ color: benchColors }}, yaxis: "y" }},
-          {{ type: "scatter", mode: "lines+markers", name: "追加注文率(%)", x: bench.map(r => r.store_id), y: bench.map(r => r.extra_order_rate), yaxis: "y2" }},
-        ], {{
-          title: "店舗別運用効率（滞在時間/追加注文率）",
-          yaxis: {{ title: "平均滞在時間(分)" }},
-          yaxis2: {{ title: "追加注文率(%)", overlaying: "y", side: "right", range: [0, 100] }},
+        Plotly.newPlot("store_efficiency", filteredStores.map((s, i) => ({{
+          type: "scatter", mode: "lines+markers", name: "店舗 " + s + " 客単価",
+          x: ms.map(r => r.month),
+          y: ms.map(r => r[s + "_avg_ticket"] || 0),
+          line: {{ color: palette[i % palette.length] }},
+        }})), {{
+          title: "店舗別 月次客単価推移",
           legend: {{ orientation: "h" }},
+          yaxis: {{ title: "客単価（円）" }},
+          xaxis: {{ title: "月" }},
         }});
 
         // --- Time slot ---
